@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+
+# Configuration & Secrets (JAMAIS sur GitHub)
+config.json
+.env
+
+# Fichiers de travail (PDFs, JSONs générés)
+*.pdf
+*.json
+# Sauf si tu veux garder des fichiers exemples, ajoute : !exemple.pdf
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
