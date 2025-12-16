@@ -2087,3 +2087,62 @@ class BlockValidationInterface(QMainWindow):
             traceback.print_exc()
             self.statusbar.showMessage("Erreur de génération", 5000)
             QMessageBox.critical(self, "Erreur de Build", f"Une erreur est survenue :\n{str(e)}")
+
+    def show_auto_translate_dialog(self):
+        """Affiche le dialogue pour lancer la traduction IA."""
+        # 1. Charger la clé API existante (si config.json existe à la racine)
+        config_path = os.path.join(os.path.dirname(self.pdf_path) if self.pdf_path else ".", "config.json")
+        # Fallback racine projet si pdf_path est vide ou ailleurs
+        if not os.path.exists(config_path):
+             config_path = "config.json"
+             
+        current_key = ""
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    current_key = json.load(f).get("api_key", "")
+            except: pass
+
+        # 2. Demander Clé + Langue
+        # Pour faire simple, on utilise QInputDialog deux fois ou on fait un petit Dialog custom.
+        # Ici version simple : on demande la clé si vide, puis la langue.
+        
+        api_key, ok = QInputDialog.getText(self, "Clé API Google", "Entrez votre clé API Gemini :", text=current_key)
+        if not ok or not api_key.strip():
+            return
+            
+        # Sauvegarde de la clé pour la prochaine fois
+        try:
+            with open("config.json", "w") as f:
+                json.dump({"api_key": api_key.strip()}, f)
+        except Exception as e:
+            print(f"Impossible de sauver la config: {e}")
+            
+        lang, ok = QInputDialog.getText(self, "Langue Cible", "Code Langue (ex: FR) :", text="FR")
+        if not ok or not lang.strip():
+            return
+            
+        lang = lang.strip().upper()
+        
+        # 3. Lancer la traduction
+        # Fichier source : basename_pour_traduction.json
+        project_dir = os.path.dirname(self.pdf_path)
+        source_file = os.path.join(project_dir, f"{self.basename}_pour_traduction.json")
+        
+        if not os.path.exists(source_file):
+            QMessageBox.warning(self, "Erreur", f"Fichier source introuvable :\n{source_file}")
+            return
+            
+        self.statusbar.showMessage("Traduction IA en cours... (Patientez)", 0)
+        
+        try:
+            # Appel asynchrone idéalement, mais ici synchrone pour commencer (l'UI gèlera 5-10s)
+            translator = AutoTranslator(api_key.strip())
+            output = translator.translate_file(source_file, lang)
+            
+            self.statusbar.showMessage(f"Traduction terminée : {output}", 5000)
+            QMessageBox.information(self, "Succès", f"Fichier traduit généré :\n{output}\n\nVous pouvez maintenant générer le PDF.")
+            
+        except Exception as e:
+            self.statusbar.showMessage("Erreur Traduction", 5000)
+            QMessageBox.critical(self, "Erreur IA", f"La traduction a échoué :\n{str(e)}")
